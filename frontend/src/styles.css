@@ -1,0 +1,165 @@
+/* src/styles.css */
+@import "ol/ol.css";
+
+:root {
+  --c2-bg-deep: #04090e;
+  --c2-bg-dark: #081119;
+  --c2-bg-panel: #0d1a24;
+  --c2-bg-surface: #12222f;
+  --c2-bg-surface-raised: #182c3c;
+  --c2-border: #1d3345;
+  --c2-border-bright: #2d4e68;
+  --c2-cyan: #00e5ff;
+  --c2-cyan-glow: rgba(0, 229, 255, 0.25);
+  --c2-blue: #38bdf8;
+  --c2-blue-friend: #2563eb;
+  --c2-red-enemy: #dc2626;
+  --c2-green-ready: #10b981;
+  --c2-amber-warn: #f59e0b;
+  --c2-text-bright: #f0f6fc;
+  --c2-text-main: #cbd5e1;
+  --c2-text-muted: #64748b;
+  --font-display: 'Chakra Petch', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--c2-bg-deep);
+  color: var(--c2-text-main);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar for Tactical Panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--c2-bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c2-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c2-border-bright);
+}
+
+/* Tactical Selection */
+::selection {
+  background: rgba(0, 229, 255, 0.3);
+  color: #fff;
+}
+
+/* Global Utility Classes */
+.font-display {
+  font-family: var(--font-display) !important;
+}
+
+.font-mono {
+  font-family: var(--font-mono) !important;
+}
+
+.glow-cyan {
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+}
+
+.glow-box-cyan {
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.25);
+}
+
+.pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--c2-green-ready);
+  box-shadow: 0 0 8px var(--c2-green-ready);
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+.pulse-dot.danger {
+  background-color: var(--c2-red-enemy);
+  box-shadow: 0 0 8px var(--c2-red-enemy);
+}
+
+.pulse-dot.warning {
+  background-color: var(--c2-amber-warn);
+  box-shadow: 0 0 8px var(--c2-amber-warn);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+/* Custom OpenLayers styling */
+.ol-zoom {
+  display: none !important;
+}
+
+.ol-attribution {
+  display: none !important;
+}
+
+/* Toasts container */
+.c2-toast-container {
+  position: fixed;
+  top: 75px;
+  right: 20px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.c2-toast {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 380px;
+  background: rgba(8, 17, 25, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--c2-border-bright);
+  border-left: 4px solid var(--c2-cyan);
+  padding: 12px 16px;
+  border-radius: 4px;
+  color: var(--c2-text-bright);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  animation: slide-in-toast 0.25s ease-out;
+}
+
+.c2-toast.success { border-left-color: var(--c2-green-ready); }
+.c2-toast.warning { border-left-color: var(--c2-amber-warn); }
+.c2-toast.danger { border-left-color: var(--c2-red-enemy); }
+
+@keyframes slide-in-toast {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

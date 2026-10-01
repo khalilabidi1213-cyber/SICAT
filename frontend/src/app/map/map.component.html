@@ -1,0 +1,272 @@
+<!-- src/app/map/map.component.html -->
+<div class="position-relative w-100 h-100 tactical-map-wrapper">
+  
+  <!-- Map Element -->
+  <div #mapElement class="w-100 h-100 map-canvas"></div>
+
+  <!-- TARGETING MODE BANNER (When Picking Location) -->
+  <div *ngIf="isPickingCoords" class="targeting-banner">
+    <div class="d-flex align-items-center gap-2">
+      <span class="pulse-dot warning"></span>
+      <span class="font-display fw-bold text-uppercase tracking-wider">TARGETING MODE ACTIVE</span>
+      <span class="text-muted d-none d-md-inline">— Click anywhere on the map to lock deployment coordinates</span>
+    </div>
+    <button class="btn btn-sm btn-outline-warning py-0 px-2 font-mono" (click)="appState.cancelPickingCoordinates()">
+      <i class="bi bi-x"></i> Cancel
+    </button>
+  </div>
+
+  <!-- FLOATING RIGHT: Tactical Tool Rail -->
+  <div class="tactical-rail">
+    <div class="tool-group">
+      <button class="tool-btn" [class.active]="activeTool === 'none'" (click)="activateTool('none')" title="Pan & Select Units">
+        <i class="bi bi-cursor-fill"></i>
+        <span class="tool-label">PAN</span>
+      </button>
+
+      <button class="tool-btn" [class.active]="activeTool === 'Point'" (click)="activateTool('Point')" title="Drop Tactical Point">
+        <i class="bi bi-geo-alt-fill text-danger"></i>
+        <span class="tool-label">POINT</span>
+      </button>
+
+      <button class="tool-btn" [class.active]="activeTool === 'LineString'" (click)="activateTool('LineString')" title="Draw Maneuver Vector / Line">
+        <i class="bi bi-slash-lg text-info"></i>
+        <span class="tool-label">VECTOR</span>
+      </button>
+
+      <button class="tool-btn" [class.active]="activeTool === 'Polygon'" (click)="activateTool('Polygon')" title="Draw Tactical Perimeter / Zone">
+        <i class="bi bi-bounding-box text-primary"></i>
+        <span class="tool-label">ZONE</span>
+      </button>
+
+      <button class="tool-btn" [class.active]="activeTool === 'Circle'" (click)="activateTool('Circle')" title="Draw Engagement Range Circle">
+        <i class="bi bi-record-circle text-success"></i>
+        <span class="tool-label">RING</span>
+      </button>
+
+      <button class="tool-btn" [class.active]="activeTool === 'measure'" (click)="activateTool('measure')" title="Measure Distance">
+        <i class="bi bi-rulers text-warning"></i>
+        <span class="tool-label">RULER</span>
+      </button>
+
+      <button class="tool-btn clear-tool" (click)="clearMapDrawings()" title="Clear All Drawings & Measurements">
+        <i class="bi bi-trash3"></i>
+        <span class="tool-label">CLEAR</span>
+      </button>
+    </div>
+
+    <!-- Zoom & Theater Controls -->
+    <div class="tool-group mt-2">
+      <button class="tool-btn" (click)="zoomIn()" title="Zoom In">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+      <button class="tool-btn" (click)="zoomOut()" title="Zoom Out">
+        <i class="bi bi-dash-lg"></i>
+      </button>
+      <button class="tool-btn" (click)="resetTheater()" title="Reset Theater View (Tunisia / Theater Center)">
+        <i class="bi bi-crosshair2 text-info"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- FLOATING BOTTOM LEFT: Coordinate Converter -->
+  <div class="converter-wrapper">
+    <!-- Toggle Trigger -->
+    <button *ngIf="!isConverterOpen" class="btn-converter-toggle" (click)="toggleConverter()" title="Open Coordinate Telemetry & Converter">
+      <i class="bi bi-grid-3x3"></i>
+      <span class="font-mono text-uppercase">GRID / MGRS</span>
+    </button>
+
+    <!-- Converter Panel -->
+    <div *ngIf="isConverterOpen" class="converter-panel">
+      <div class="panel-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-crosshair text-info"></i>
+          <span class="font-display fw-bold text-uppercase">COORDINATE TELEMETRY</span>
+        </div>
+        <button class="btn-close-panel" (click)="toggleConverter()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="panel-body">
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="field-label">LATITUDE</label>
+            <input type="number" step="0.0001" class="field-input font-mono" [(ngModel)]="inputLat" (change)="convertCoordinates()">
+          </div>
+          <div class="col-6">
+            <label class="field-label">LONGITUDE</label>
+            <input type="number" step="0.0001" class="field-input font-mono" [(ngModel)]="inputLng" (change)="convertCoordinates()">
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mb-3">
+          <button class="btn-tactical-action flex-grow-1" (click)="convertCoordinates()">
+            <i class="bi bi-geo-alt"></i> Fly & Lock
+          </button>
+          <button class="btn-tactical-outline" (click)="pickCoordsForConverter()" title="Pick point from map">
+            <i class="bi bi-crosshair"></i> Pick
+          </button>
+        </div>
+
+        <!-- Telemetry Results -->
+        <div class="telemetry-readouts">
+          <div class="telemetry-item">
+            <span class="tel-label">MGRS</span>
+            <div class="d-flex align-items-center justify-content-between">
+              <span class="tel-value text-danger font-mono">{{ convertedMGRS || '---' }}</span>
+              <button class="btn-copy" (click)="copyMGRS()" title="Copy MGRS">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="telemetry-item">
+            <span class="tel-label">UTM GRID</span>
+            <span class="tel-value text-info font-mono">{{ convertedUTM || '---' }}</span>
+          </div>
+
+          <div class="telemetry-item">
+            <span class="tel-label">METRIC PROJECTION</span>
+            <span class="tel-value text-success font-mono">{{ convertedMetric || '---' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING BOTTOM RIGHT: Live Telemetry Bar -->
+  <div class="live-telemetry-bar">
+    <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-1">
+        <span class="pulse-dot"></span>
+        <span class="tel-chip-label">GPS LOCK:</span>
+        <span class="font-mono tel-chip-val">{{ mouseCoordDisplay }}</span>
+      </div>
+
+      <div class="d-none d-sm-flex align-items-center gap-1 border-start border-secondary ps-3">
+        <span class="tel-chip-label">MGRS:</span>
+        <span class="font-mono tel-chip-val text-info">{{ mouseMGRSDisplay }}</span>
+      </div>
+
+      <div class="d-none d-md-flex align-items-center gap-1 border-start border-secondary ps-3">
+        <span class="tel-chip-label">ZOOM:</span>
+        <span class="font-mono tel-chip-val text-warning">{{ currentZoom }}x</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TACTICAL UNIT DOSSIER POPUP OVERLAY -->
+  <div #popupElement class="unit-popup-container">
+    <div *ngIf="selectedPopupUnit" class="tactical-dossier-card" [class.enemy-dossier]="selectedPopupUnit.diplomacy === 'ENEMY'">
+      
+      <!-- Dossier Header -->
+      <div class="dossier-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+          <span class="force-pill" [class.enemy]="selectedPopupUnit.diplomacy === 'ENEMY'">
+            {{ selectedPopupUnit.diplomacy }}
+          </span>
+          <span class="unit-title font-display">{{ selectedPopupUnit.name }}</span>
+        </div>
+        <button class="btn-close-dossier" (click)="closeUnitPopup()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <!-- Dossier Body -->
+      <div class="dossier-body">
+        
+        <!-- Echelon & Branch Badges -->
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="badge-echelon font-mono">{{ selectedPopupUnit.echelon }}</span>
+          <span class="badge-branch font-mono">{{ selectedPopupUnit.branch }}</span>
+          <span class="ms-auto font-mono text-muted small">{{ selectedPopupMGRS }}</span>
+        </div>
+
+        <!-- Combat Readiness Gauge -->
+        <div class="readiness-box mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="readiness-label font-mono">COMBAT READINESS</span>
+            <span class="readiness-value font-mono fw-bold" 
+                  [class.text-success]="calculateReadinessPercent(selectedPopupUnit) >= 70"
+                  [class.text-warning]="calculateReadinessPercent(selectedPopupUnit) < 70 && calculateReadinessPercent(selectedPopupUnit) >= 40"
+                  [class.text-danger]="calculateReadinessPercent(selectedPopupUnit) < 40">
+              {{ calculateReadinessPercent(selectedPopupUnit) }}%
+            </span>
+          </div>
+          <div class="progress readiness-bar-bg" style="height: 6px;">
+            <div class="progress-bar" 
+                 [class.bg-success]="calculateReadinessPercent(selectedPopupUnit) >= 70"
+                 [class.bg-warning]="calculateReadinessPercent(selectedPopupUnit) < 70 && calculateReadinessPercent(selectedPopupUnit) >= 40"
+                 [class.bg-danger]="calculateReadinessPercent(selectedPopupUnit) < 40"
+                 [style.width.%]="calculateReadinessPercent(selectedPopupUnit)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Strength Grid -->
+        <div class="strength-grid mb-3">
+          <div class="str-cell">
+            <span class="cell-label">OFFICERS</span>
+            <span class="cell-val font-mono">{{ selectedPopupUnit.personnel_officers | number }}</span>
+          </div>
+          <div class="str-cell">
+            <span class="cell-label">NCOs</span>
+            <span class="cell-val font-mono">{{ selectedPopupUnit.personnel_sous_officers | number }}</span>
+          </div>
+          <div class="str-cell">
+            <span class="cell-label">TROOPS</span>
+            <span class="cell-val font-mono">{{ selectedPopupUnit.personnel_troupe | number }}</span>
+          </div>
+          <div class="str-cell">
+            <span class="cell-label">TOTAL</span>
+            <span class="cell-val font-mono fw-bold text-info">
+              {{ (selectedPopupUnit.personnel_officers + selectedPopupUnit.personnel_sous_officers + selectedPopupUnit.personnel_troupe) | number }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Health Matrix -->
+        <div class="health-matrix mb-3">
+          <div class="health-pill ready">
+            <i class="bi bi-shield-check"></i> Ready: {{ selectedPopupUnit.personnel_ready | number }}
+          </div>
+          <div class="health-pill sick">
+            <i class="bi bi-bandaid"></i> Sick: {{ selectedPopupUnit.personnel_sick | number }}
+          </div>
+          <div class="health-pill dead">
+            <i class="bi bi-heart-pulse text-danger"></i> Casualties: {{ selectedPopupUnit.personnel_dead | number }}
+          </div>
+          <div class="health-pill missing">
+            <i class="bi bi-question-circle"></i> M.I.A: {{ selectedPopupUnit.personnel_missing | number }}
+          </div>
+        </div>
+
+        <!-- Weapons & Munitions -->
+        <div class="inventory-section mb-3" *ngIf="selectedPopupUnit.weapons || selectedPopupUnit.ammo">
+          <div *ngIf="selectedPopupUnit.weapons" class="inv-item">
+            <span class="inv-label"><i class="bi bi-crosshair"></i> WEAPONS:</span>
+            <span class="inv-text">{{ selectedPopupUnit.weapons }}</span>
+          </div>
+          <div *ngIf="selectedPopupUnit.ammo" class="inv-item">
+            <span class="inv-label"><i class="bi bi-box-seam"></i> AMMUNITION:</span>
+            <span class="inv-text">{{ selectedPopupUnit.ammo }}</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="dossier-actions d-flex gap-2">
+          <button class="btn btn-sm btn-outline-info flex-grow-1 font-mono" (click)="focusPopupUnit()">
+            <i class="bi bi-crosshair2"></i> Center
+          </button>
+          <button class="btn btn-sm btn-outline-danger font-mono" (click)="deletePopupUnit()" title="Withdraw unit from theater">
+            <i class="bi bi-trash"></i> Withdraw
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
